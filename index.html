@@ -35,7 +35,7 @@
           id="name"
           name="name"
           type="text"
-          autocomplete="name"
+          autocomplete="given-name"
           placeholder="Как к вам обращаться"
           required
           maxlength="80"
@@ -44,30 +44,17 @@
       </div>
 
       <div class="field">
-        <label for="contact">Телефон или Email</label>
+        <label for="phone">Телефон</label>
         <input
-          id="contact"
-          name="contact"
-          type="text"
-          autocomplete="email"
-          placeholder="+7 999 000-00-00 или you@example.com"
+          id="phone"
+          name="phone"
+          type="tel"
+          autocomplete="tel"
+          inputmode="tel"
+          placeholder="+7 999 000-00-00"
           required
         />
-        <span class="field__error" data-error-for="contact"></span>
-      </div>
-
-      <div class="field">
-        <label for="type">Тип обращения</label>
-        <div class="select-wrap">
-          <select id="type" name="type" required>
-            <option value="" disabled selected>Выберите вариант</option>
-            <option value="complaint">Жалоба</option>
-            <option value="suggestion">Предложение</option>
-            <option value="gratitude">Благодарность</option>
-            <option value="question">Вопрос</option>
-          </select>
-        </div>
-        <span class="field__error" data-error-for="type"></span>
+        <span class="field__error" data-error-for="phone"></span>
       </div>
 
       <div class="field">
@@ -96,17 +83,20 @@
       </p>
     </form>
 
-    <div class="success" id="success" hidden>
-      <div class="success__icon" aria-hidden="true">
-        <svg viewBox="0 0 52 52" width="64" height="64">
-          <circle cx="26" cy="26" r="24" fill="none" stroke="#5BB87A" stroke-width="2"/>
-          <path fill="none" stroke="#5BB87A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M14 27 L23 36 L38 18"/>
-        </svg>
+    <div class="modal" id="successModal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal__backdrop" data-modal-close></div>
+      <div class="modal__dialog">
+        <div class="modal__icon" aria-hidden="true">
+          <svg viewBox="0 0 52 52" width="64" height="64">
+            <circle cx="26" cy="26" r="24" fill="none" stroke="#2E7D4F" stroke-width="2"/>
+            <path fill="none" stroke="#2E7D4F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M14 27 L23 36 L38 18"/>
+          </svg>
+        </div>
+        <h2 id="modalTitle">Спасибо!</h2>
+        <p>Ваше обращение принято.</p>
+        <p class="modal__sub">Мы свяжемся с вами при необходимости.</p>
+        <button type="button" class="submit" data-modal-close>Закрыть</button>
       </div>
-      <h2>Спасибо!</h2>
-      <p>Мы получили ваше обращение.</p>
-      <p class="success__sub">Ответим, если потребуется связаться с вами.</p>
-      <button type="button" class="submit submit--ghost" id="newMessageBtn">Написать ещё</button>
     </div>
 
     <footer class="footer">

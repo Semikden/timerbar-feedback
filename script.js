@@ -1,50 +1,33 @@
 /* ================================================================
    Timer Bar Feedback — клиентская логика
+   - Маска телефона с автоподстановкой +7
    - Валидация полей
    - Подсчёт символов
-   - Отправка через настраиваемый backend (см. config.json)
+   - Поп-ап "Спасибо" через модальное окно
+   - Отправка через настраиваемый backend
    ================================================================ */
 
 (function () {
   'use strict';
 
   // ====== CONFIG ====================================================
-  // Если хочется подключить свой backend — замените endpoint.
-  // По умолчанию используется относительный путь (для статик-хостинга
-  // рядом с serverless-функцией). Если поля нет — будет fallback
-  // на mailto: (показываем гостю собранное письмо).
   const CONFIG = window.FEEDBACK_CONFIG || {
-    endpoint: '',          // например: '/api/feedback' или 'https://form.timerbar.ru/api/feedback'
+    endpoint: '',          // например: '/api/feedback'
     fallbackToMailto: true,
     fallbackEmail: 'owner@timerbar.ru',
-    // channel: 'telegram' | 'email' | 'sheets' — определяется на сервере
   };
 
   // ====== DOM ========================================================
   const form = document.getElementById('feedbackForm');
   const submitBtn = document.getElementById('submitBtn');
-  const successScreen = document.getElementById('success');
-  const newMessageBtn = document.getElementById('newMessageBtn');
-  const counter = document.getElementById('counter');
   const messageEl = document.getElementById('message');
-
-  const TYPE_LABEL = {
-    complaint: 'Жалоба',
-    suggestion: 'Предложение',
-    gratitude: 'Благодарность',
-    question: 'Вопрос',
-  };
+  const counter = document.getElementById('counter');
+  const modalEl = document.getElementById('successModal');
 
   // ====== HELPERS ====================================================
-  function fieldEl(name) {
-    return form.querySelector(`[name="${name}"]`);
-  }
-  function errorEl(name) {
-    return form.querySelector(`[data-error-for="${name}"]`);
-  }
-  function fieldWrap(name) {
-    return fieldEl(name).closest('.field');
-  }
+  function fieldEl(name) { return form.querySelector(`[name="${name}"]`); }
+  function errorEl(name) { return form.querySelector(`[data-error-for="${name}"]`); }
+  function fieldWrap(name) { return fieldEl(name).closest('.field'); }
   function setError(name, message) {
     const wrap = fieldWrap(name);
     const err = errorEl(name);
@@ -61,19 +44,155 @@
     form.querySelectorAll('.field__error').forEach((e) => (e.textContent = ''));
   }
 
-  // ====== VALIDATION =================================================
-  function isEmail(v) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  }
-  function isPhone(v) {
-    // Разрешаем +7, 8, цифры, пробелы, скобки, дефисы. Минимум 10 цифр.
-    const digits = v.replace(/\D/g, '');
-    return digits.length >= 10 && digits.length <= 15 && /^[+\d\s()\-]+$/.test(v);
-  }
-  function isValidContact(v) {
-    return isEmail(v) || isPhone(v);
+  // ====== PHONE MASK ================================================
+  // Поддержка кодов стран: Россия +7, Украина +380, Беларусь +375,
+  // Казахстан +7, Узбекистан +998, Армения +374, Грузия +995,
+  // Азербайджан +994, Молдова +373, Таджикистан +992, Кыргызстан +996,
+  // Туркменистан +993, Латвия +371, Литва +370, Эстония +372.
+  const COUNTRY_CODES = {
+    '7':  { name: 'Россия/Казахстан', maxLen: 10 },
+    '380': { name: 'Украина',          maxLen: 9  },
+    '375': { name: 'Беларусь',         maxLen: 9  },
+    '998': { name: 'Узбекистан',       maxLen: 9  },
+    '374': { name: 'Армения',          maxLen: 8  },
+    '995': { name: 'Грузия',           maxLen: 9  },
+    '994': { name: 'Азербайджан',      maxLen: 9  },
+    '373': { name: 'Молдова',          maxLen: 8  },
+    '992': { name: 'Таджикистан',      maxLen: 9  },
+    '996': { name: 'Кыргызстан',       maxLen: 9  },
+    '993': { name: 'Туркменистан',     maxLen: 8  },
+    '371': { name: 'Латвия',           maxLen: 8  },
+    '370': { name: 'Литва',            maxLen: 8  },
+    '372': { name: 'Эстония',          maxLen: 8  },
+  };
+
+  function detectCountryCode(digits) {
+    // digits — только цифры введённого номера без ведущего плюса
+    // Ищем самый длинный совпадающий код в COUNTRY_CODES
+    for (const code of Object.keys(COUNTRY_CODES).sort((a, b) => b.length - a.length)) {
+      if (digits.startsWith(code)) return { code, ...COUNTRY_CODES[code] };
+    }
+    return null;
   }
 
+  function formatPhone(raw) {
+    // Оставляем только цифры
+    let digits = raw.replace(/\D/g, '');
+
+    // Если начинается с 8 — заменяем на 7 (РФ)
+    if (digits.startsWith('8') && digits.length >= 1) {
+      digits = '7' + digits.slice(1);
+    }
+
+    // Определяем код страны
+    const cc = detectCountryCode(digits);
+
+    if (!cc) {
+      // Ничего не подставилось — пользователь ещё не начал вводить
+      // или ввёл мусор. Возвращаем то, что есть.
+      if (digits.length === 0) return '';
+      return '+' + digits;
+    }
+
+    const ccDigits = digits.slice(0, cc.code.length);
+    const rest = digits.slice(cc.code.length);
+
+    // Форматируем остаток по маске: "XXX XXX-XX-XX" (для РФ 10 цифр)
+    // Универсально: группы по 3-2-2 для совместимости
+    let formattedRest;
+    if (cc.maxLen === 10) {
+      // РФ/КЗ: XXX-XXX-XX-XX
+      formattedRest = rest
+        .slice(0, 3)
+        + (rest.length > 3 ? ' ' + rest.slice(3, 6) : '')
+        + (rest.length > 6 ? '-' + rest.slice(6, 8) : '')
+        + (rest.length > 8 ? '-' + rest.slice(8, 10) : '');
+    } else if (cc.maxLen === 9) {
+      // UA/BY/UZ/GE/AZ/TJ/KG: XX-XXX-XX-XX
+      formattedRest = rest
+        .slice(0, 2)
+        + (rest.length > 2 ? ' ' + rest.slice(2, 5) : '')
+        + (rest.length > 5 ? '-' + rest.slice(5, 7) : '')
+        + (rest.length > 7 ? '-' + rest.slice(7, 9) : '');
+    } else {
+      // 8 цифр (AM/MD/TM/LV/LT/EE): XX-XXX-XXX
+      formattedRest = rest
+        .slice(0, 2)
+        + (rest.length > 2 ? ' ' + rest.slice(2, 5) : '')
+        + (rest.length > 5 ? '-' + rest.slice(5, 8) : '');
+    }
+
+    return '+' + ccDigits + ' ' + formattedRest.trim();
+  }
+
+  function setupPhoneMask() {
+    const phone = fieldEl('phone');
+    let prevValue = '';
+
+    function onInput() {
+      const cursorPos = phone.selectionStart;
+      const before = phone.value.slice(0, cursorPos);
+      const digitsBefore = before.replace(/\D/g, '').length;
+
+      const formatted = formatPhone(phone.value);
+      phone.value = formatted;
+      prevValue = formatted;
+
+      // Восстанавливаем курсор после форматирования
+      try {
+        const newCursor = positionForDigits(formatted, digitsBefore);
+        phone.setSelectionRange(newCursor, newCursor);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    function positionForDigits(str, digitCount) {
+      let seen = 0;
+      for (let i = 0; i < str.length; i++) {
+        if (/\d/.test(str[i])) {
+          seen++;
+          if (seen === digitCount) return i + 1;
+        }
+      }
+      return str.length;
+    }
+
+    function onFocus() {
+      if (!phone.value) {
+        // Автоподстановка +7 при первом фокусе
+        phone.value = '+7 ';
+        prevValue = '+7 ';
+        try {
+          phone.setSelectionRange(3, 3);
+        } catch (e) {}
+      }
+    }
+
+    function onBlur() {
+      if (phone.value.trim() === '+7' || phone.value.trim() === '') {
+        phone.value = '';
+      }
+    }
+
+    function onKeyDown(e) {
+      // Backspace: если курсор сразу после "+7 " — не даём удалить префикс
+      if (e.key === 'Backspace' && phone.value.startsWith('+7 ') &&
+          phone.selectionStart <= 3 && phone.selectionEnd <= 3) {
+        e.preventDefault();
+        try {
+          phone.setSelectionRange(3, 3);
+        } catch (err) {}
+      }
+    }
+
+    phone.addEventListener('input', onInput);
+    phone.addEventListener('focus', onFocus);
+    phone.addEventListener('blur', onBlur);
+    phone.addEventListener('keydown', onKeyDown);
+  }
+
+  // ====== VALIDATION =================================================
   function validateField(name) {
     const el = fieldEl(name);
     const v = (el.value || '').trim();
@@ -84,15 +203,17 @@
       return setError(name, ''), true;
     }
 
-    if (name === 'contact') {
-      if (!v) return setError(name, 'Укажите телефон или email'), false;
-      if (!isValidContact(v))
-        return setError(name, 'Похоже на опечатку. Пример: +7 999 000-00-00 или you@example.com'), false;
-      return setError(name, ''), true;
-    }
-
-    if (name === 'type') {
-      if (!v) return setError(name, 'Выберите тип обращения'), false;
+    if (name === 'phone') {
+      if (!v) return setError(name, 'Укажите телефон'), false;
+      const digits = v.replace(/\D/g, '');
+      const cc = detectCountryCode(digits);
+      if (!cc) {
+        return setError(name, 'Не удалось распознать код страны'), false;
+      }
+      const local = digits.slice(cc.code.length);
+      if (local.length < cc.maxLen) {
+        return setError(name, `Введите ${cc.maxLen} цифр номера`), false;
+      }
       return setError(name, ''), true;
     }
 
@@ -107,7 +228,7 @@
 
   function validateAll() {
     let ok = true;
-    ['name', 'contact', 'type', 'message'].forEach((n) => {
+    ['name', 'phone', 'message'].forEach((n) => {
       if (!validateField(n)) ok = false;
     });
     return ok;
@@ -120,13 +241,36 @@
     counter.style.color = len > 1800 ? 'var(--accent)' : '';
   }
 
+  // ====== MODAL ======================================================
+  function openModal() {
+    modalEl.hidden = false;
+    document.body.style.overflow = 'hidden';
+    // Фокус на кнопку Закрыть после анимации
+    setTimeout(() => {
+      const btn = modalEl.querySelector('[data-modal-close]');
+      if (btn && btn.tagName === 'BUTTON') btn.focus();
+    }, 100);
+  }
+  function closeModal() {
+    modalEl.hidden = true;
+    document.body.style.overflow = '';
+    resetForm();
+  }
+
+  function setupModal() {
+    modalEl.addEventListener('click', (e) => {
+      if (e.target.matches('[data-modal-close]')) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modalEl.hidden) closeModal();
+    });
+  }
+
   // ====== SUBMIT =====================================================
   function buildPayload() {
-    const data = {
+    return {
       name: fieldEl('name').value.trim(),
-      contact: fieldEl('contact').value.trim(),
-      type: fieldEl('type').value,
-      typeLabel: TYPE_LABEL[fieldEl('type').value] || fieldEl('type').value,
+      phone: fieldEl('phone').value.trim(),
       message: fieldEl('message').value.trim(),
       createdAt: new Date().toISOString(),
       source: {
@@ -136,7 +280,6 @@
         lang: navigator.language,
       },
     };
-    return data;
   }
 
   function setLoading(state) {
@@ -149,27 +292,20 @@
     }
   }
 
-  function showSuccess() {
-    form.hidden = true;
-    successScreen.hidden = false;
-    successScreen.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
   function resetForm() {
     form.reset();
     clearAllErrors();
     updateCounter();
-    form.hidden = false;
-    successScreen.hidden = true;
+    // Не очищаем поле телефона после reset — оно останется пустым,
+    // маска подставит +7 при следующем фокусе
     fieldEl('name').focus();
   }
 
   function fallbackToMailto(payload) {
-    const subject = encodeURIComponent(`[${payload.typeLabel}] Timer Bar — обращение`);
+    const subject = encodeURIComponent(`Timer Bar — обращение от ${payload.name}`);
     const body = encodeURIComponent(
-      `Тип: ${payload.typeLabel}\n` +
       `Имя: ${payload.name}\n` +
-      `Контакт: ${payload.contact}\n` +
+      `Телефон: ${payload.phone}\n` +
       `Дата: ${new Date(payload.createdAt).toLocaleString('ru-RU')}\n\n` +
       `Сообщение:\n${payload.message}\n`
     );
@@ -178,7 +314,6 @@
 
   async function send(payload) {
     if (!CONFIG.endpoint) {
-      // Нет настроенного backend — fallback на mailto
       if (CONFIG.fallbackToMailto) {
         fallbackToMailto(payload);
         return { ok: true, channel: 'mailto' };
@@ -202,8 +337,7 @@
     e.preventDefault();
     clearAllErrors();
     if (!validateAll()) {
-      // Фокус на первое поле с ошибкой
-      const firstError = form.querySelector('.field.has-error input, .field.has-error select, .field.has-error textarea');
+      const firstError = form.querySelector('.field.has-error input, .field.has-error textarea');
       if (firstError) firstError.focus();
       return;
     }
@@ -213,17 +347,14 @@
 
     try {
       const result = await send(payload);
-      // Если mailto — не показываем success, пользователь уходит в почтовый клиент
       if (result && result.channel === 'mailto') {
-        // небольшая задержка чтобы успела сработать mailto
-        setTimeout(showSuccess, 600);
+        setTimeout(openModal, 600);
       } else {
-        showSuccess();
+        openModal();
       }
     } catch (err) {
       console.error('Submit error:', err);
-      // Покажем общую ошибку на submit
-      const submitErr = form.querySelector('.submit + .legal') || form.querySelector('.legal');
+      const submitErr = form.querySelector('.legal');
       if (submitErr) {
         submitErr.textContent =
           'Не удалось отправить. Попробуйте ещё раз или позвоните: +7 918 499-01-01';
@@ -235,7 +366,7 @@
   }
 
   // ====== EVENTS =====================================================
-  ['name', 'contact', 'type', 'message'].forEach((n) => {
+  ['name', 'phone', 'message'].forEach((n) => {
     fieldEl(n).addEventListener('blur', () => {
       if (fieldEl(n).value.trim()) validateField(n);
     });
@@ -243,11 +374,11 @@
   });
 
   messageEl.addEventListener('input', updateCounter);
-
   form.addEventListener('submit', onSubmit);
-  newMessageBtn.addEventListener('click', resetForm);
 
   // ====== INIT =======================================================
+  setupPhoneMask();
+  setupModal();
   updateCounter();
   fieldEl('name').focus();
 })();
