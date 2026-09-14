@@ -164,7 +164,7 @@ function validate(p) {
   }
   if (!p.name || (p.name + '').trim().length < 2) errs.push('name_too_short');
   if (!p.phone) errs.push('phone_missing');
-  if (!p.type || !['complaint', 'suggestion', 'gratitude'].includes(p.type))
+  if (!p.type || !['complaint', 'suggestion', 'gratitude', 'review'].includes(p.type))
     errs.push('type_invalid');
   if (!p.message || (p.message + '').trim().length < 10) errs.push('message_too_short');
   if (p.message && p.message.length > 5000) errs.push('message_too_long');

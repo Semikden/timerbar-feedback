@@ -25,9 +25,17 @@
   const modalEl = document.getElementById('successModal');
 
   const TYPE_LABEL = {
-    complaint: 'Происшествие',
+    complaint: 'Жалоба',
     suggestion: 'Предложение',
-    gratitude: 'Рекомендация',
+    gratitude: 'Благодарность',
+    review: 'Отзыв',
+  };
+
+  const TYPE_EMOJI = {
+    complaint: '😟',
+    suggestion: '💡',
+    gratitude: '🙏',
+    review: '⭐',
   };
 
   // ====== HELPERS ====================================================
@@ -225,7 +233,7 @@
 
     if (name === 'type') {
       if (!v) return setError(name, 'Выберите тип обращения'), false;
-      if (!['complaint', 'suggestion', 'gratitude'].includes(v)) {
+      if (!['complaint', 'suggestion', 'gratitude', 'review'].includes(v)) {
         return setError(name, 'Недопустимое значение'), false;
       }
       return setError(name, ''), true;
