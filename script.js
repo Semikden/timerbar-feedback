@@ -13,7 +13,7 @@
   // ====== CONFIG ====================================================
   const CONFIG = window.FEEDBACK_CONFIG || {
     endpoint: '',          // например: '/api/feedback'
-    fallbackToMailto: true,
+    fallbackToMailto: false, // по умолчанию ВЫКЛ — модалка показывается без mailto
     fallbackEmail: 'owner@timerbar.ru',
   };
 
@@ -339,11 +339,14 @@
 
   async function send(payload) {
     if (!CONFIG.endpoint) {
+      // Демо-режим: endpoint не настроен. Ничего не отправляем, просто имитируем успех.
       if (CONFIG.fallbackToMailto) {
         fallbackToMailto(payload);
         return { ok: true, channel: 'mailto' };
       }
-      throw new Error('Не настроен endpoint для отправки');
+      // Сохраняем данные в console для отладки (видно в DevTools)
+      console.info('[Timer Bar Feedback] Демо-режим: обращение не отправлено (endpoint не задан).', payload);
+      return { ok: true, channel: 'demo' };
     }
 
     const res = await fetch(CONFIG.endpoint, {

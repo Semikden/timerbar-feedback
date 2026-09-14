@@ -342,10 +342,7 @@ body {
   justify-content: center;
   padding: 20px;
   overflow-y: auto;
-}
-
-@supports (height: 100svh) {
-  .modal { height: 100svh; }
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal[hidden] {
@@ -373,7 +370,8 @@ body {
   border-radius: 18px;
   padding: 36px 28px 28px;
   max-width: 380px;
-  width: 100%;
+  width: calc(100% - 40px);
+  margin: auto;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
