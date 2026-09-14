@@ -263,29 +263,39 @@
     counter.style.color = len > 1800 ? 'var(--accent)' : '';
   }
 
-  // ====== MODAL ======================================================
+  // ====== MODAL (native <dialog>) ===================================
   function openModal() {
-    modalEl.hidden = false;
-    document.body.style.overflow = 'hidden';
-    // Фокус на кнопку Закрыть после анимации
-    setTimeout(() => {
-      const btn = modalEl.querySelector('[data-modal-close]');
-      if (btn && btn.tagName === 'BUTTON') btn.focus();
-    }, 100);
+    // <dialog> сам центрируется браузером + имеет встроенный backdrop + Escape
+    if (typeof modalEl.showModal === 'function') {
+      modalEl.showModal();
+    } else {
+      // fallback для очень старых браузеров
+      modalEl.setAttribute('open', '');
+    }
   }
   function closeModal() {
-    modalEl.hidden = true;
-    document.body.style.overflow = '';
+    if (typeof modalEl.close === 'function') {
+      modalEl.close();
+    } else {
+      modalEl.removeAttribute('open');
+    }
     resetForm();
   }
 
   function setupModal() {
+    // Закрытие по клику на кнопку
+    const closeBtn = document.getElementById('modalCloseBtn');
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    // Закрытие по клику на сам dialog (backdrop) — клик по самому элементу dialog
     modalEl.addEventListener('click', (e) => {
-      if (e.target.matches('[data-modal-close]')) closeModal();
+      // если клик пришёл на сам dialog (а не на его содержимое) — закрыть
+      const rect = modalEl.getBoundingClientRect();
+      const insideDialog =
+        e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top && e.clientY <= rect.bottom;
+      if (!insideDialog) closeModal();
     });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !modalEl.hidden) closeModal();
-    });
+    // <dialog> сам обрабатывает Escape — ничего не нужно
   }
 
   // ====== SUBMIT =====================================================
@@ -374,12 +384,8 @@
     setLoading(true);
 
     try {
-      const result = await send(payload);
-      if (result && result.channel === 'mailto') {
-        setTimeout(openModal, 600);
-      } else {
-        openModal();
-      }
+      await send(payload);
+      openModal();
     } catch (err) {
       console.error('Submit error:', err);
       const submitErr = form.querySelector('.legal');

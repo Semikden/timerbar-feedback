@@ -97,8 +97,7 @@
       </p>
     </form>
 
-    <div class="modal" id="successModal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modal__backdrop" data-modal-close></div>
+    <dialog class="modal" id="successModal" aria-labelledby="modalTitle">
       <div class="modal__dialog">
         <div class="modal__icon" aria-hidden="true">
           <svg viewBox="0 0 52 52" width="64" height="64">
@@ -109,9 +108,9 @@
         <h2 id="modalTitle">Спасибо!</h2>
         <p>Ваше обращение принято.</p>
         <p class="modal__sub">Мы свяжемся с вами при необходимости.</p>
-        <button type="button" class="submit" data-modal-close>Закрыть</button>
+        <button type="button" class="submit" id="modalCloseBtn">Закрыть</button>
       </div>
-    </div>
+    </dialog>
 
     <footer class="footer">
       <p class="footer__addr">ул. Промышленная, 3 · Анапа</p>
