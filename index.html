@@ -58,6 +58,19 @@
       </div>
 
       <div class="field">
+        <label for="type">Тип обращения</label>
+        <div class="select-wrap">
+          <select id="type" name="type" required>
+            <option value="" disabled selected>Выберите вариант</option>
+            <option value="complaint">Происшествие</option>
+            <option value="suggestion">Предложение</option>
+            <option value="gratitude">Рекомендация</option>
+          </select>
+        </div>
+        <span class="field__error" data-error-for="type"></span>
+      </div>
+
+      <div class="field">
         <label for="message">Опишите ситуацию</label>
         <textarea
           id="message"

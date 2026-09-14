@@ -24,6 +24,12 @@
   const counter = document.getElementById('counter');
   const modalEl = document.getElementById('successModal');
 
+  const TYPE_LABEL = {
+    complaint: 'Происшествие',
+    suggestion: 'Предложение',
+    gratitude: 'Рекомендация',
+  };
+
   // ====== HELPERS ====================================================
   function fieldEl(name) { return form.querySelector(`[name="${name}"]`); }
   function errorEl(name) { return form.querySelector(`[data-error-for="${name}"]`); }
@@ -217,6 +223,14 @@
       return setError(name, ''), true;
     }
 
+    if (name === 'type') {
+      if (!v) return setError(name, 'Выберите тип обращения'), false;
+      if (!['complaint', 'suggestion', 'gratitude'].includes(v)) {
+        return setError(name, 'Недопустимое значение'), false;
+      }
+      return setError(name, ''), true;
+    }
+
     if (name === 'message') {
       if (!v) return setError(name, 'Опишите ситуацию'), false;
       if (v.length < 10) return setError(name, 'Минимум 10 символов'), false;
@@ -228,7 +242,7 @@
 
   function validateAll() {
     let ok = true;
-    ['name', 'phone', 'message'].forEach((n) => {
+    ['name', 'phone', 'type', 'message'].forEach((n) => {
       if (!validateField(n)) ok = false;
     });
     return ok;
@@ -271,6 +285,8 @@
     return {
       name: fieldEl('name').value.trim(),
       phone: fieldEl('phone').value.trim(),
+      type: fieldEl('type').value,
+      typeLabel: TYPE_LABEL[fieldEl('type').value] || fieldEl('type').value,
       message: fieldEl('message').value.trim(),
       createdAt: new Date().toISOString(),
       source: {
@@ -302,8 +318,9 @@
   }
 
   function fallbackToMailto(payload) {
-    const subject = encodeURIComponent(`Timer Bar — обращение от ${payload.name}`);
+    const subject = encodeURIComponent(`[${payload.typeLabel}] Timer Bar — обращение от ${payload.name}`);
     const body = encodeURIComponent(
+      `Тип: ${payload.typeLabel}\n` +
       `Имя: ${payload.name}\n` +
       `Телефон: ${payload.phone}\n` +
       `Дата: ${new Date(payload.createdAt).toLocaleString('ru-RU')}\n\n` +
@@ -366,7 +383,7 @@
   }
 
   // ====== EVENTS =====================================================
-  ['name', 'phone', 'message'].forEach((n) => {
+  ['name', 'phone', 'type', 'message'].forEach((n) => {
     fieldEl(n).addEventListener('blur', () => {
       if (fieldEl(n).value.trim()) validateField(n);
     });

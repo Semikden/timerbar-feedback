@@ -74,9 +74,9 @@ async function sendTelegram(p, env) {
 
   const text =
     `🆕 Новое обращение Timer Bar\n` +
-    `Тип: ${p.typeLabel}\n` +
+    `Тип: ${p.typeLabel || p.type}\n` +
     `Имя: ${escape(p.name)}\n` +
-    `Контакт: ${escape(p.contact)}\n` +
+    `Телефон: ${escape(p.phone)}\n` +
     `Когда: ${new Date(p.createdAt).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}\n\n` +
     `${escape(p.message)}`;
 
@@ -103,11 +103,12 @@ async function sendEmail(p, env) {
   const to = env.EMAIL_TO;
   if (!apiKey || !to) throw new Error('RESEND_API_KEY/EMAIL_TO not set');
 
+  const subject = `[${p.typeLabel || p.type}] Timer Bar — ${p.name}`;
   const html =
     `<h2>Новое обращение Timer Bar</h2>` +
-    `<p><b>Тип:</b> ${escape(p.typeLabel)}<br>` +
+    `<p><b>Тип:</b> ${escape(p.typeLabel || p.type)}<br>` +
     `<b>Имя:</b> ${escape(p.name)}<br>` +
-    `<b>Контакт:</b> ${escape(p.contact)}<br>` +
+    `<b>Телефон:</b> ${escape(p.phone)}<br>` +
     `<b>Когда:</b> ${new Date(p.createdAt).toLocaleString('ru-RU')}</p>` +
     `<p><b>Сообщение:</b><br>${escape(p.message).replace(/\n/g, '<br>')}</p>`;
 
@@ -120,7 +121,7 @@ async function sendEmail(p, env) {
     body: JSON.stringify({
       from: env.EMAIL_FROM || 'Timer Bar Feedback <noreply@timerbar.ru>',
       to: [to],
-      subject: `[${p.typeLabel}] Timer Bar — ${p.name}`,
+      subject,
       html,
     }),
   });
@@ -162,8 +163,8 @@ function validate(p) {
     return errs;
   }
   if (!p.name || (p.name + '').trim().length < 2) errs.push('name_too_short');
-  if (!p.contact) errs.push('contact_missing');
-  if (!p.type || !['complaint', 'suggestion', 'gratitude', 'question'].includes(p.type))
+  if (!p.phone) errs.push('phone_missing');
+  if (!p.type || !['complaint', 'suggestion', 'gratitude'].includes(p.type))
     errs.push('type_invalid');
   if (!p.message || (p.message + '').trim().length < 10) errs.push('message_too_short');
   if (p.message && p.message.length > 5000) errs.push('message_too_long');
