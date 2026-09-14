@@ -1,0 +1,33 @@
+{
+  "channel": "telegram",
+  "endpoint": "",
+  "fallbackToMailto": true,
+  "fallbackEmail": "owner@timerbar.ru",
+
+  "_comment_telegram": "Получите токен у @BotFather и chat_id (можно узнать через @userinfobot или getUpdates). Храните ТОЛЬКО в секретах Cloudflare/Vercel, НЕ коммитьте.",
+  "telegram": {
+    "botToken": "",
+    "chatId": ""
+  },
+
+  "_comment_email": "SMTP или API провайдера (SendGrid, Resend, Mailgun).",
+  "email": {
+    "smtpHost": "",
+    "smtpPort": 587,
+    "smtpUser": "",
+    "smtpPassword": "",
+    "fromAddress": "noreply@timerbar.ru",
+    "toAddress": "owner@timerbar.ru"
+  },
+
+  "_comment_sheets": "Service account JSON (через GOOGLE_CREDENTIALS env). Создайте SA в Google Cloud Console, дайте доступ к таблице.",
+  "sheets": {
+    "spreadsheetId": "",
+    "sheetName": "Feedback"
+  },
+
+  "_comment_webhook": "Альтернатива каналам — единый webhook (Slack/Discord/n8n/Make/Zapier).",
+  "webhook": {
+    "url": ""
+  }
+}
